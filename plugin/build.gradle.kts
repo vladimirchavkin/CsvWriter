@@ -7,12 +7,11 @@
  */
 
 plugins {
-    // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
     `java-gradle-plugin`
+    `maven-publish`
 }
 
 repositories {
-    // Use Maven Central for resolving dependencies.
     mavenCentral()
 }
 
@@ -25,23 +24,18 @@ dependencies {
 
 testing {
     suites {
-        // Configure the built-in test suite
         val test by getting(JvmTestSuite::class) {
-            // Use JUnit Jupiter test framework
             useJUnitJupiter("5.10.3")
         }
 
-        // Create a new test suite
         val functionalTest by registering(JvmTestSuite::class) {
             dependencies {
-                // functionalTest test suite depends on the production code in tests
                 implementation(project())
             }
 
             targets {
                 all {
-                    // This test suite should run after the built-in test suite has run its tests
-                    testTask.configure { shouldRunAfter(test) } 
+                    testTask.configure { shouldRunAfter(test) }
                 }
             }
         }
@@ -49,7 +43,6 @@ testing {
 }
 
 gradlePlugin {
-    // Define the plugin
     val greeting by plugins.creating {
         id = "org.writer.greeting"
         implementationClass = "org.writer.CsvWriterPlugin"
@@ -59,6 +52,29 @@ gradlePlugin {
 gradlePlugin.testSourceSets.add(sourceSets["functionalTest"])
 
 tasks.named<Task>("check") {
-    // Include functionalTest as part of the check lifecycle
     dependsOn(testing.suites.named("functionalTest"))
+}
+
+tasks.withType<JavaCompile> {
+    options.encoding = "UTF-8"
+}
+
+tasks.withType<Test> {
+    systemProperty("file.encoding", "UTF-8")
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            from(components["java"])
+            groupId = "org.writer"
+            artifactId = "csv-writer-plugin"
+            version = "1.0.0"
+        }
+    }
+    repositories {
+        maven {
+            url = uri(layout.buildDirectory.dir("repo"))
+        }
+    }
 }
